@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+  <meta charset="UTF-8">
+  <title>Argetohu dhe edukohu</title>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      min-height: 100vh;
+      margin: 0;
+      padding: 40px 0;
+      color: #333;
+    }
+
+    .box {
+      background: white;
+      width: 90%;
+      max-width: 480px;
+      margin: 20px auto;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+      animation: fadeIn 0.4s ease;
+    }
+
+    .correct { background-color: #28a745 !important; transition: background-color 0.5s ease; }
+    .wrong { background-color: #dc3545 !important; transition: background-color 0.5s ease; }
+
+    .word-btn {
+      margin: 5px;
+      padding: 10px 15px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background: #1e3c72;
+      color: white;
+      transition: background-color 0.3s ease;
+    }
+
+.word-row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+
+.letter-box {
+  width: 36px;
+  height: 36px;
+  border: 2px solid #ccc;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+  margin: 4px;
+  text-transform: uppercase;
+}
+
+.green { background: #28a745; color: white; border-color: #28a745; }
+.yellow { background: #ffc107; color: black; border-color: #ffc107; }
+.gray { background: #6c757d; color: white; border-color: #6c757d; }
+
+
+    .word-btn.selected { background: #ffa500; }
+    .word-btn.correct { background: #28a745 !important; }
+    .word-btn.wrong { background: #dc3545 !important; }
+
+    h2 { margin-bottom: 20px; color: #1e3c72; text-align: center; }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      margin: 8px 0;
+      font-size: 15px;
+      border: none;
+      border-radius: 10px;
+      background: #1e3c72;
+      color: white;
+      cursor: pointer;
+      transition: 0.25s;
+    }
+
+    button:hover { background: #16315c; }
+
+    .hidden { display: none; }
+
+    hr { margin: 20px 0; border: none; height: 1px; background: #ddd; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    #timer { font-size: 18px; text-align: center; margin-bottom: 10px; color: #1e3c72; font-weight: bold; }
+
+    #progress-container {
+      width: 100%;
+      background: #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+      height: 12px;
+      margin-bottom: 15px;
+    }
+
+    #progress-bar {
+      height: 100%;
+      width: 100%;
+      background: #28a745;
+      transition: width 0.2s linear;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- MENU KRYESORE -->
+  <div class="box" id="menu">
+    <h2>Zgjidh mënyrën e lojës</h2>
+
+    <audio id="correct-sound" src="correct-sound.wav"></audio>
+    <audio id="wrong-sound" src="wrong-sound.wav"></audio>
+
+    <button onclick="selectMode('alternative')">🅰️ Gjej alternativën</button>
+<button onclick="selectMode('gabimi')">❌ Ku është gabimi</button>
+<button onclick="selectMode('fjalekryq')">🧩 Fjalëkryq</button>
+ <button onclick="selectMode('rendit')">🔤 Rendit fjalinë</button>
+    <button onclick="selectMode('shprehje')">😀 Gjej shprehjen</button>
+<button onclick="selectMode('fjala-dites')">🟩 Fjala e Ditës</button>
+
+   
+  </div>
+
+  <!-- VESHTIRESIA -->
+  <div class="box hidden" id="difficulty">
+    <h2>Zgjidh vështirësinë</h2>
+
+    <button onclick="startGame('lehte')">🟢 Lehtë</button>
+    <button onclick="startGame('mesatare')">🟡 Mesatare</button>
+    <button onclick="startGame('veshtire')">🔴 Vështirë</button>
+  </div>
+
+  <!-- LOJA -->
+  <div class="box hidden" id="game">
+    <h2 id="question"></h2>
+    <div id="timer"></div>
+    <div id="progress-container"><div id="progress-bar"></div></div>
+
+    <button id="a" onclick="answer(0)"></button>
+    <button id="b" onclick="answer(1)"></button>
+    <button id="c" onclick="answer(2)"></button>
+
+    <p>Pikë: <span id="score">0</span></p>
+
+    <button onclick="location.reload()">🔄 Kthehu në menu</button>
+  </div>
+
+  <!-- EKRANI PËR FUNDIN E NIVELIT -->
+  <div class="box hidden" id="end-screen">
+    <h2>Nivele të tjera së shpejti!</h2>
+    <p>Pikët tuaja: <span id="final-score">0</span></p>
+
+    <button onclick="retry()">Provo përsëri</button>
+    <button onclick="goMenu()">Kthehu në menu</button>
+    <button onclick="nextLevel()">Provo nivelin tjetër</button>
+  </div>
+
+  <script>
+    let mode = "";
+    let level = "";
+    let score = 0;
+    let current = 0;
+    let userOrder = [];
+    let timer;
+    let timeLeft = 0;
+
+    const timeForLevel = { lehte: 20, mesatare: 10, veshtire: 5 };
+
+const data = {
+  alternative: {
+    lehte: [{ q: "Cila fjali është e saktë?", a: ["Un shkoj ne shkoll", "Unë shkoj në shkollë", "Une shkoj ne shkollë"], c: 1 }],
+    mesatare: [{ q: "Cila fjalë është shkruar saktë?", a: ["cdo ditë", "çdo ditë", "çdo dit"], c: 1 }],
+    veshtire: [{ q: "Cila është fjali gramatikisht e saktë?", a: ["Nxënësit studion", "Nxënësit studiojnë", "Nxënësit studionë"], c: 1 }]
+  },
+  rendit: {
+    lehte: [{ original: ["Ai", "lexon", "një", "libër"], shuffled: ["libër", "Ai", "lexon", "një"] }],
+    mesatare: [
+      { original: ["Nxënësit", "mësojnë", "gjuhën", "shqipe"], shuffled: ["shqipe", "Nxënësit", "gjuhën", "mësojnë"] },
+      { original: ["Ajo", "shkroi", "një", "letër", "të", "gjatë"], shuffled: ["gjatë", "Ajo", "një", "të", "letër", "shkroi"] }
+    ],
+    veshtire: [{ original: ["Kur", "mbaroi", "mësimi", "nxënësit", "dolën", "jashtë"], shuffled: ["nxënësit", "jashtë", "Kur", "dolën", "mësimi", "mbaroi"] }]
+  },
+  gabimi: {
+    lehte: [{ sentence: ["Unë", "shkoj", "ne", "shkollë"], wrong: 2 }],
+    mesatare: [{ sentence: ["Nxënësit", "mesojn", "gjuhën", "shqipe"], wrong: 1 }],
+    veshtire: [{ sentence: ["Ajo", "kishte", "shkruajtur", "një", "ese"], wrong: 2 }]
+  },
+  shprehje: {
+    lehte: [{ emojis: "🌧️☔", options: ["Shi i fortë", "Ditë me diell", "Borë"], correct: 0 }],
+    mesatare: [{ emojis: "🐦✋", options: ["Kap zogun", "Një zog në dorë vlen sa dy në degë", "Fluturon larg"], correct: 1 }],
+    veshtire: [{ emojis: "🔥⛽", options: ["Zjarr i vogël", "Hedh benzinë në zjarr", "Zjarri shuhet"], correct: 1 }]
+  }
+};
+
+
+    function selectMode(m) {
+      mode = m;
+      document.getElementById("menu").classList.add("hidden");
+      document.getElementById("difficulty").classList.remove("hidden");
+    }
+
+   function startGame(l) {
+  level = l;
+  document.getElementById("difficulty").classList.add("hidden");
+  document.getElementById("game").classList.remove("hidden");
+  current = 0;
+  score = 0;
+
+  if (mode === "fjalekryq") {
+  loadCrossword();
+ } else if (mode === "fjala-dites") {
+  loadFjalaDites();
+ } else {
+  loadQuestion();
+ }
+
+}
+
+
+    function startTimer() {
+      clearInterval(timer);
+      timeLeft = timeForLevel[level];
+      document.getElementById("timer").innerText = `Koha: ${timeLeft}s`;
+      document.getElementById("progress-bar").style.width = "100%";
+
+      timer = setInterval(() => {
+        timeLeft--;
+        document.getElementById("timer").innerText = `Koha: ${timeLeft}s`;
+        let percent = (timeLeft / timeForLevel[level]) * 100;
+        document.getElementById("progress-bar").style.width = percent + "%";
+
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          autoNext();
+        }
+      }, 1000);
+    }
+
+    function autoNext() {
+      let soundWrong = document.getElementById("wrong-sound");
+      soundWrong.play();
+
+      if (mode === "rendit") {
+        let buttons = document.querySelectorAll(".word-btn");
+        buttons.forEach(btn => btn.classList.add("wrong"));
+      } else {
+        let q = data[mode][level][current];
+        let btns = [document.getElementById("a"), document.getElementById("b"), document.getElementById("c")];
+        btns.forEach((btn, idx) => {
+          if (idx === q.c) btn.classList.add("correct");
+          else btn.classList.add("wrong");
+        });
+      }
+
+      setTimeout(() => {
+        current++;
+        loadQuestion();
+      }, 800);
+    }
+
+    function showEndScreen() {
+      clearInterval(timer);
+      document.getElementById("game").classList.add("hidden");
+      document.getElementById("end-screen").classList.remove("hidden");
+      document.getElementById("final-score").innerText = score;
+    }
+
+    function retry() {
+      document.getElementById("end-screen").classList.add("hidden");
+      document.getElementById("game").classList.remove("hidden");
+      current = 0;
+      score = 0;
+      loadQuestion();
+    }
+
+    function goMenu() {
+      document.getElementById("end-screen").classList.add("hidden");
+      document.getElementById("menu").classList.remove("hidden");
+    }
+
+    function nextLevel() {
+      alert("Kjo do të shtohet së shpejti 🚧");
+    }
+
+    function answer(x) {
+      let q = data[mode][level][current];
+      let btns = [document.getElementById("a"), document.getElementById("b"), document.getElementById("c")];
+      let soundCorrect = document.getElementById("correct-sound");
+      let soundWrong = document.getElementById("wrong-sound");
+
+      clearInterval(timer);
+
+      if (mode !== "rendit") {
+        if (x === q.c) {
+          score++;
+          btns[x].classList.add("correct");
+          soundCorrect.play();
+        } else {
+          btns[x].classList.add("wrong");
+          soundWrong.play();
+        }
+
+        setTimeout(() => {
+          btns.forEach(btn => btn.classList.remove("correct", "wrong"));
+          current++;
+          loadQuestion();
+          document.getElementById("score").innerText = score;
+        }, 500);
+      }
+    }
+
+function loadCrossword() {
+  let container = document.getElementById("game");
+  container.querySelector("h2").innerText = "Gjej fjalët e fjalëkryqit!";
+
+  // Fshi butonat standard
+  ["a","b","c"].forEach(id => document.getElementById(id).classList.add("hidden"));
+  let oldBtns = container.querySelectorAll(".word-btn");
+  oldBtns.forEach(btn => btn.remove());
+
+  let cw = data.fjalekryq[level];
+
+  // Shto imazhin
+ let img = document.createElement("img");
+img.src = data.fjalekryq[level].image;
+img.style.width = "100%";
+img.style.borderRadius = "16px";
+img.style.marginBottom = "15px";
+container.appendChild(img);
+
+
+  // Fusha për të shkruar fjalët
+  cw.words.forEach((word, idx) => {
+    let input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = `Fjala ${idx+1}`;
+    input.className = "word-btn";
+    input.style.width = "100%";
+    input.style.margin = "5px 0";
+    input.style.padding = "10px";
+    input.dataset.correct = word.toLowerCase();
+    container.appendChild(input);
+  });
+
+  // Shto butonin "Kontrollo"
+  let checkBtn = document.createElement("button");
+  checkBtn.innerText = "Kontrollo përgjigjet";
+  checkBtn.onclick = checkCrossword;
+  container.appendChild(checkBtn);
+}
+
+function checkCrossword() {
+  let inputs = document.querySelectorAll(".word-btn");
+  let correct = 0;
+  inputs.forEach(input => {
+    if(input.value.trim().toLowerCase() === input.dataset.correct) {
+      input.style.backgroundColor = "#28a745";
+      correct++;
+    } else {
+      input.style.backgroundColor = "#dc3545";
+    }
+    input.disabled = true;
+  });
+
+  score += correct;
+  document.getElementById("score").innerText = score;
+
+  setTimeout(showEndScreen, 1000);
+}
+
+  function loadQuestion() {
+  if (current >= data[mode][level].length) { 
+    showEndScreen(); 
+    return; 
+  }
+
+  startTimer();
+
+// Rregullim: shfaq butonat e alternativave kur duhen
+document.getElementById("a").classList.remove("hidden");
+document.getElementById("b").classList.remove("hidden");
+document.getElementById("c").classList.remove("hidden");
+
+// Nëse NUK jemi në alternative, fshihi
+if (mode === "rendit" || mode === "gabimi") {
+  document.getElementById("a").classList.add("hidden");
+  document.getElementById("b").classList.add("hidden");
+  document.getElementById("c").classList.add("hidden");
+}
+
+
+  // PASTRO NUMRIN E PYETJES POR MOS FSHIJ BUTONAT E PËRZGJEDHUR
+  let container = document.getElementById("game");
+  container.querySelector("h2").innerText = "";
+  container.querySelector("#timer").innerText = `Koha: ${timeForLevel[level]}s`;
+
+  // Fshi butonat e mëparshme për mode gabimi ose rendit
+  let oldBtns = container.querySelectorAll(".word-btn");
+  oldBtns.forEach(btn => btn.remove());
+
+  if (mode === "rendit") {
+    let q = data[mode][level][current];
+    userOrder = [];
+    container.querySelector("h2").innerText = "Rendit fjalinë";
+
+    q.shuffled.forEach(word => {
+      let btn = document.createElement("button");
+      btn.innerText = word;
+      btn.className = "word-btn";
+      btn.onclick = () => { 
+        btn.classList.add("selected"); 
+        btn.disabled = true; 
+        checkOrder(word); 
+      };
+      container.appendChild(btn);
+    });
+
+  } 
+  else if (mode === "gabimi") {
+    let q = data[mode][level][current];
+    container.querySelector("h2").innerText = "Gjej fjalën e gabuar";
+
+    q.sentence.forEach((word, idx) => {
+      let btn = document.createElement("button");
+      btn.innerText = word;
+      btn.className = "word-btn";
+
+      btn.onclick = () => {
+        clearInterval(timer);
+        if (idx === q.wrong) { 
+          btn.classList.add("correct"); 
+          document.getElementById("correct-sound").play(); 
+          score++; 
+        } else { 
+          btn.classList.add("wrong"); 
+          document.getElementById("wrong-sound").play(); 
+        }
+
+        document.getElementById("score").innerText = score;
+
+        setTimeout(() => { current++; loadQuestion(); }, 800);
+      };
+
+      container.appendChild(btn);
+    });
+
+  } 
+  else if (mode === "alternative") {
+    let q = data[mode][level][current];
+    document.getElementById("question").innerText = q.q;
+    document.getElementById("a").innerText = q.a[0];
+    document.getElementById("b").innerText = q.a[1];
+    document.getElementById("c").innerText = q.a[2];
+  }
+
+else if (mode === "shprehje") {
+  let q = data.shprehje[level][current];
+
+  document.getElementById("question").innerText =
+    "Çfarë shprehje përfaqësojnë këto emoji?\n" + q.emojis;
+
+  document.getElementById("a").innerText = q.options[0];
+  document.getElementById("b").innerText = q.options[1];
+  document.getElementById("c").innerText = q.options[2];
+
+  // Ruaj përgjigjen e saktë për funksionin answer()
+  data[mode][level][current].c = q.correct;
+ }
+}
+
+    function checkOrder(word) {
+      userOrder.push(word);
+      let q = data[mode][level][current];
+      let buttons = document.querySelectorAll(".word-btn");
+
+      let soundCorrect = document.getElementById("correct-sound");
+      let soundWrong = document.getElementById("wrong-sound");
+
+      if (userOrder.length === q.original.length) {
+        let correct = true;
+        for (let i = 0; i < q.original.length; i++) {
+          if (userOrder[i] !== q.original[i]) { correct = false; break; }
+        }
+
+        buttons.forEach(btn => {
+          btn.classList.remove("selected");
+          btn.classList.add(correct ? "correct" : "wrong");
+        });
+
+        if (correct) {
+          soundCorrect.play();
+          score++;
+        } else {
+          soundWrong.play();
+        }
+
+        document.getElementById("score").innerText = score;
+        clearInterval(timer);
+
+        setTimeout(() => {
+          current++;
+          loadQuestion();
+        }, 800);
+      }
+    }
+
+data.gabimi = {
+  lehte: [
+    {
+      sentence: ["Unë", "shkoj", "ne", "shkollë"],
+      wrong: 2
+    }
+  ],
+  mesatare: [
+    {
+      sentence: ["Nxënësit", "mesojn", "gjuhën", "shqipe"],
+      wrong: 1
+    }
+  ],
+  veshtire: [
+    {
+      sentence: ["Ajo", "kishte", "shkruajtur", "një", "ese"],
+      wrong: 2
+    }
+  ]
+};
+
+data.shprehje = {
+  lehte: [
+    {
+      emojis: "1️⃣✨🔥1️⃣⛰️",
+      options: ["Një shkëndijë ndez një mal", "Zjari vë në flakë malin", "Krijohet vullkan"],
+      correct: 0
+    }
+  ],
+  mesatare: [
+    {
+      emojis: "🐦✋2️⃣🪹",
+      options: ["Kap zogun", "Një zog në dorë vlen sa dy në degë", "Zogu duhet te rri i lirë"],
+      correct: 1
+    }
+  ],
+  veshtire: [
+    {
+      emojis: "🐺🌫️🔍",
+      options: ["Ujku në mjergull fshihet ", "Ujku mjergull kërkon", "Kerkohet ujku"],
+      correct: 1
+    }
+  ]
+};
+
+data.fjalekryq = {
+  lehte: { image: "fjalekryq-lehte.jpg", words: ["libër", "shkollë", "nxënës"] },
+  mesatare: { image: "fjalekryq-mesatare.jpg", words: ["gjuhë", "shkollë", "nxënës", "mësim", "letër"] },
+  veshtire: { image: "fjalekryq-veshtire.jpg", words: ["nxënësit","shkruajti","mësimi","letër","ese","libër","shkollë","lojë","tema","provo"] }
+};
+
+data.fjalaDites = {
+  lehte: "punë",
+  mesatare: "deshirë",
+  veshtire: "elektricitet"
+};
+
+let attempts = 0;
+let currentGuess = "";
+
+function loadFjalaDites() {
+  clearInterval(timer);
+
+  document.getElementById("timer").innerText = "";
+  document.getElementById("progress-container").style.display = "none";
+
+  ["a","b","c"].forEach(id =>
+    document.getElementById(id).classList.add("hidden")
+  );
+
+  let container = document.getElementById("game");
+  container.querySelector("h2").innerText = "🟩 Fjala e Ditës";
+
+  container.querySelectorAll(".word-btn, .letter-box, input").forEach(e => e.remove());
+
+  attempts = 0;
+  const secret = data.fjalaDites[level];
+
+  for (let r = 0; r < 6; r++) {
+    let row = document.createElement("div");
+    row.className = "word-row";
+    for (let i = 0; i < secret.length; i++) {
+      let box = document.createElement("div");
+      box.className = "letter-box";
+      row.appendChild(box);
+    }
+    container.appendChild(row);
+  }
+
+  let input = document.createElement("input");
+  input.maxLength = secret.length;
+  input.placeholder = `Shkruaj fjalën (${secret.length} shkronja)`;
+  input.style.width = "100%";
+  input.style.marginTop = "10px";
+  container.appendChild(input);
+
+  let btn = document.createElement("button");
+  btn.innerText = "Provo";
+  btn.onclick = () => checkGuess(secret, input);
+  container.appendChild(btn);
+}
+
+function checkGuess(secret, input) {
+  let guess = input.value.toLowerCase();
+  if (guess.length !== secret.length) return;
+
+  let rows = document.querySelectorAll(".word-row");
+  let row = rows[attempts];
+  let letters = row.children;
+
+  for (let i = 0; i < secret.length; i++) {
+    letters[i].innerText = guess[i].toUpperCase();
+
+    if (guess[i] === secret[i]) {
+      letters[i].classList.add("green");
+    } else if (secret.includes(guess[i])) {
+      letters[i].classList.add("yellow");
+    } else {
+      letters[i].classList.add("gray");
+    }
+  }
+
+  if (guess === secret) {
+    score++;
+    document.getElementById("score").innerText = score;
+    setTimeout(showEndScreen, 800);
+    return;
+  }
+
+  attempts++;
+  input.value = "";
+
+  if (attempts === 6) {
+    alert("Fjala ishte: " + secret.toUpperCase());
+    showEndScreen();
+  }
+}
+
+    function comingSoon() { alert("Kjo mënyrë loje do të shtohet së shpejti 🚧"); }
+  </script>
+
+</body>
+</html>
+
+
