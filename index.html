@@ -222,7 +222,7 @@ const data = {
 
   if (mode === "fjalekryq") {
   loadCrossword();
- } else if (mode === "fjala-dites") {
+ } else if (mode === "fjalaDites") {
   loadFjalaDites();
  } else {
   loadQuestion();
@@ -396,7 +396,7 @@ document.getElementById("b").classList.remove("hidden");
 document.getElementById("c").classList.remove("hidden");
 
 // Nëse NUK jemi në alternative, fshihi
-if (mode === "rendit" || mode === "gabimi") {
+if (mode === "rendit" || mode === "gabimi" || mode === "fjalaDites") {
   document.getElementById("a").classList.add("hidden");
   document.getElementById("b").classList.add("hidden");
   document.getElementById("c").classList.add("hidden");
@@ -661,5 +661,6 @@ function checkGuess(secret, input) {
 
 </body>
 </html>
+
 
 
